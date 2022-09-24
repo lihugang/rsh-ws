@@ -7,70 +7,146 @@ const crypto = require('crypto');
 const randomPort = generateRandomPort();
 const password = crypto.randomBytes(2).toString('hex').toUpperCase();
 
+const fs = require('fs');
+
+const pty = require('node-pty');
+
 const wss = new WebSocketServer({
     port: randomPort,
     perMessageDeflate: false
 });
-const map = new Map();
+const pidMap = new Map();
+const detectShell = () => {
+    console.log('Detecting your system environment...\nPlease waiting for a minute...');
+    const isBashDetect = !child.spawnSync('bash').error;
+    const isCmdDetect = !child.spawnSync('cmd.exe').error;
+    const isPowerShellDetect = !child.spawnSync('powershell.exe').error;
+    if (isBashDetect) {
+        if (require('os').platform() === 'win32') {
+            //git-bash
+            const where_bash = child.execSync('where bash').toString().replace('\r', '').replace('\n', '');
+            if (where_bash.length > 0) return where_bash;
+        } else {
+            return 'bash';
+        };
+    };
+    if (isPowerShellDetect) return 'powershell.exe';
+    if (isCmdDetect) return 'cmd.exe';
+    console.error('Error: Cannot find Bash or CMD.');
+    process.exit(0);
+};
+
+const usingShell = detectShell();
+
 wss.on('connection', (ws) => {
+    let isAuthenticated = false;
     ws.on('message', (msg, isBinary) => {
         try {
             msg = JSON.parse(msg);
         } catch (e) {
             ws.send(JSON.stringify({
                 status: 'error',
-                data: e.toString()
+                data: {
+                    hasError: true,
+                    error: {
+                        type: 'Parse message failed',
+                        source: e
+                    }
+                }
             }));
-        };
-        if (msg.password === password) {
-            if (msg.type === 'exec') {
-                msg.command = msg.command || msg.cmd || 'echo >/dev/null';
-                msg.stdin = msg.stdin || '';
-                const obj = child.exec(msg.command, {
-                    cwd: msg.cwd || './',
-                    windowsHide: true,
-                }, (error, stdout, stderr) => {
-                    if (error)
-                        console.log(stderr);
+            return;
+        }
+        if (msg.do === 'login') {
+            if (msg.passwd === password) isAuthenticated = true;
+            else return ws.send(JSON.stringify({
+                status: 'error',
+                data: {
+                    hasError: true,
+                    error: {
+                        type: 'Password wrong'
+                    }
+                }
+            }));
+            ws.send(JSON.stringify({
+                status: 'ok',
+                data: {
+                    hasError: false,
+                    type: 'Password correct.'
+                }
+            }));
+        } else {
+            if (!isAuthenticated) return ws.send(JSON.stringify({
+                status: 'error',
+                data: {
+                    hasError: true,
+                    error: {
+                        type: 'Need authentication'
+                    }
+                }
+            }));
+            if (msg.do === 'createTerminal') {
+                const cwd = (msg.cwd || process.env.HOME || process.env.USERPROFILE || './').replace('~', process.env.HOME || process.env.USERPROFILE || '.');
+                var cwds = cwd.split('/');
+                for (var i = 0; i < cwds.length; i++) {
+                    try {
+                        fs.mkdirSync(cwds.slice(0, i).join('/'))
+                    } catch (e) {
+                    };
+                };//Try to make directories
+                const terminal = pty.spawn(usingShell, ['--login'], {
+                    //windowsHide: true,
+                    cwd: cwd,
+                    env: msg.env || process.env,
+                });
+                pidMap.set(terminal.pid, terminal);
+                terminal.on('data', (data) => {
                     ws.send(JSON.stringify({
                         status: 'ok',
                         data: {
-                            type: 'finished',
-                            hasError: !!error,
-                            error: error,
-                            stdout: stdout,
-                            stderr: stderr,
-                            id: obj.pid
+                            type: 'Received data',
+                            data: data
                         }
                     }));
                 });
-                obj.stdin.write(msg.stdin);
-                obj.stdout.on('data', (data) => {
-                    ws.send(JSON.stringify({
-                        status: 'ok',
-                        data: {
-                            type: 'stdout-print',
-                            data: data.toString()
-                        }
-                    }));
+                ws.on('close', () => {
+                    terminal.kill();
+                    pidMap.delete(terminal.pid);
                 });
                 ws.send(JSON.stringify({
                     status: 'ok',
                     data: {
-                        id: obj.pid
-                    },
+                        hasError: false,
+                        type: 'Create successfully',
+                        pid: terminal.pid
+                    }
                 }));
-                map.set(obj.pid, obj);
-            } else if (msg.type === 'write-to-stdin') {
+            };
+            if (msg.do === 'write-to-terminal') {
                 const pid = msg.pid || 0;
-                const obj = map.get(pid);
-                if (!obj) return;
-                obj.stdin.write(msg.data || '');
-            }
-        } else ws.send(JSON.stringify({
-            status: 'error',
-            data: 'Password does not match'
-        }));
+                const terminal = pidMap.get(pid);
+                if (!terminal) return ws.send(JSON.stringify({
+                    status: 'error',
+                    data: {
+                        hasError: true,
+                        type: 'Cannot find terminal'
+                    }
+                }));
+                terminal.write(msg.data || '');
+
+            };
+            if (msg.do === 'kill-terminal') {
+                const pid = msg.pid || 0;
+                const terminal = pidMap.get(pid);
+                if (!terminal) return ws.send(JSON.stringify({
+                    status: 'error',
+                    data: {
+                        hasError: true,
+                        type: 'Cannot find terminal'
+                    }
+                }));
+                terminal.kill();
+            };
+        };
     });
 });
 

@@ -11,25 +11,35 @@
 5. 执行命令，例如，在本例子中，连接密码是`5D99`，你可以发送JSON命令
 ```json
 {
-    "password": "5D99",
-    "type": "exec",
-    "cmd": "ls",
-    "cwd": "./",
-    "stdin": ""
+    "do": "login",
+    "passwd": "5D99"
+}
+```来登录
+6. 创建终端
+```json
+{
+    "do": "createTerminal",
+    "cwd": "./", //终端目录
 }
 ```
-`cmd`为你要执行的命令，`cwd`为执行命令的目录位置，`stdin`是标准输入  
-6. 执行命令完成后会返回如下格式
+返回值中有 `data.pid` 参数，用来标识终端
+7. 发送命令
+```json
+{
+    "pid": "<pid>",
+    "do": "write-to-terminal",
+    "data": "ls"
+}
+```
+这会向终端的`stdin`写入`data`
+8. 返回命令结果
+格式为
 ```json
 {
     "status": "ok",
     "data": {
-        "type": "finished",
-        "hasError": false,
-        "error": null,
-        "stdout": "index.js\nnode_modules\npackage.json\nrand.js\nREADME.md\n",
-        "stderr": "",
-        "id": 7528
+        "type": "Received data",
+        "data": "<data here>"
     }
 }
 ```
