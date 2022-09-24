@@ -4,7 +4,7 @@
   },
   "name": "rsh-ws",
   "description": "远程外壳，使用WebSocket连接",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.js",
   "devDependencies": {},
   "scripts": {
@@ -28,6 +28,6 @@
   },
   "homepage": "https://github.com/lihugang/rsh-ws#readme",
   "bin": {
-    "rsh-ws": "node ."
+    "rsh-ws": "index.js"
   }
 }
