@@ -1,0 +1,30 @@
+{
+  "dependencies": {
+    "ws": "^8.9.0"
+  },
+  "name": "rsh-ws",
+  "description": "远程外壳，使用WebSocket连接",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lihugang/rsh-ws.git"
+  },
+  "keywords": [
+    "rsh",
+    "remote",
+    "shell",
+    "websocket",
+    "webshell"
+  ],
+  "author": "lihugang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lihugang/rsh-ws/issues"
+  },
+  "homepage": "https://github.com/lihugang/rsh-ws#readme"
+}
