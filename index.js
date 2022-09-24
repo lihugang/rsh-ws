@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const { WebSocketServer } = require('ws');
 const { generateRandomPort } = require('./rand');
 const child = require('child_process');
