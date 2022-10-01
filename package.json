@@ -6,7 +6,7 @@
   },
   "name": "rsh-ws",
   "description": "远程外壳，使用WebSocket连接",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "main": "index.js",
   "devDependencies": {},
   "scripts": {

@@ -215,7 +215,8 @@ app.delete('/:file_id', (req, res) => {
         fs.unlinkSync(app_file.get(req.params.file_id));
         res.sendStatus(204);
     } catch (e) {
-        res.status(500).send(e.message + '\n' + e.stack);
+        //res.status(500).send(e.message + '\n' + e.stack);
+        res.sendStatus(204);
     };
 });
 app.get('/', (req, res) => res.status(200).send('File operation server of rsh-ws'));
