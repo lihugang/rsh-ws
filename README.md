@@ -45,3 +45,46 @@
     }
 }
 ```
+9. 获得`rsh-ws`版本  
+发送命令  
+```json
+{
+    "do": "get-version"
+}
+```
+返回结果  
+```json
+{
+    "status": "ok",
+    "data": {
+        "type":"version",
+        "version": "<version here>"
+    }
+}
+```
+10. 文件处理  
+发送命令  
+```json
+{
+    "do": "file-operation",
+    "path": "<path here>"
+}
+```
+将会返回  
+```json
+{
+    "status": "ok",
+    "data": {
+        "port": "<port here>",
+        "file_id": "<file_id here>",
+        "path": "<path here>"
+    }
+}
+```
+文件传输使用HTTP协议  
+支持以下方法   
+- `GET` `http://ip:port/<file_id>` 下载文件，响应数据为文件内容
+- `PUT` `http://ip:port/<file_id>` 上传文件，Body负载为文件内容
+- `DELETE` `http://ip:port/<file_id>` 删除文件  
+  
+`port`请使用返回数据中的`port`

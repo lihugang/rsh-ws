@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 const { WebSocketServer } = require('ws');
 const { generateRandomPort } = require('./rand');
+const package = require('./package.json');
 const child = require('child_process');
 const crypto = require('crypto');
+const express = require('express');
 
 const randomPort = generateRandomPort();
 const password = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -146,9 +148,79 @@ wss.on('connection', (ws) => {
                 }));
                 terminal.kill();
             };
+            if (msg.do === 'get-version') {
+                ws.send(JSON.stringify({
+                    status: 'ok',
+                    data: {
+                        type: 'version',
+                        version: package.version
+                    }
+                }));
+            };
+            if (msg.do === 'file-operation') {
+                var filepath = (msg.path || './LICENSE').replace('~', process.env.HOME || process.env.USERPROFILE || '.');
+                var paths = filepath.split('/');
+                for (var i = 0; i < paths.length; i++) {
+                    try {
+                        fs.mkdirSync(paths.slice(0, i).join('/'))
+                    } catch (e) {
+                    };
+                };
+                const randomFileID = crypto.randomBytes(8).toString('hex').toUpperCase();
+                app_file.set(randomFileID, filepath);
+                ws.send(JSON.stringify({
+                    status: 'ok',
+                    data: {
+                        port: app_random_port,
+                        file_id: randomFileID,
+                        path: msg.path
+                    }
+                }));
+            };
         };
     });
 });
+
+const app = express();
+const app_file = new Map();
+app.all('*', (req, res, next) => {
+    res.setHeader('access-control-allow-origin', '*');
+    res.setHeader('access-control-allow-methods', 'GET, PUT, DELETE, OPTIONS');
+    res.setHeader('access-control-max-age', '86400');
+    return next();
+});
+app.options('*', (req, res) => res.sendStatus(200));
+app.get('/:file_id', (req, res) => {
+    if (!app_file.has(req.params.file_id)) return res.sendStatus(404);
+    if (fs.existsSync(app_file.get(req.params.file_id))) {
+        //file exists
+        res.status(200);
+        const readStream = fs.createReadStream(app_file.get(req.params.file_id));
+        readStream.pipe(res);
+    } else return res.sendStatus(404);
+});
+app.put('/:file_id', (req, res) => {
+    if (!app_file.has(req.params.file_id)) return res.sendStatus(404);
+    try {
+        const writeStream = fs.createWriteStream(app_file.get(req.params.file_id));
+        req.pipe(writeStream);
+        writeStream.on('close', () => res.sendStatus(201));
+    } catch (e) {
+        res.status(500).send(e.message + '\n' + e.stack);
+    };
+});
+app.delete('/:file_id', (req, res) => {
+    if (!app_file.has(req.params.file_id)) return res.sendStatus(404);
+    try {
+        fs.unlinkSync(app_file.get(req.params.file_id));
+        res.sendStatus(204);
+    } catch (e) {
+        res.status(500).send(e.message + '\n' + e.stack);
+    };
+});
+app.get('/', (req, res) => res.status(200).send('File operation server of rsh-ws'));
+const app_random_port = generateRandomPort();
+app.listen(app_random_port);
 
 let code = randomPort.toString(36);
 while (code.length < 4) code = '0' + code;
