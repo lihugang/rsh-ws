@@ -212,7 +212,10 @@ app.put('/:file_id', (req, res) => {
 app.delete('/:file_id', (req, res) => {
     if (!app_file.has(req.params.file_id)) return res.sendStatus(404);
     try {
-        fs.unlinkSync(app_file.get(req.params.file_id));
+        const path = app_file.get(req.params.file_id);
+        if (fs.statSync(path).isFile())
+            fs.unlinkSync(path);
+        else fs.rmdirSync(path);
         res.sendStatus(204);
     } catch (e) {
         //res.status(500).send(e.message + '\n' + e.stack);
